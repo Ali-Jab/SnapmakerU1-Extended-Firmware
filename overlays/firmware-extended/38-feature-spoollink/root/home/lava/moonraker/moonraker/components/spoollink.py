@@ -1164,8 +1164,17 @@ class SpoolLink:
             channel, spool_id, vendor, material,
             f" {variant}" if variant else "",
             color_hex, uid_hex or "none")
+        # Klippy's acknowledgement can arrive after another reader event.
+        # Never let that old reply seed recovery for a replacement card.
+        reader_context = (self._channel_uids.get(channel),
+                          self._channel_event_times.get(channel))
         reply = await self._spoollink_set(channel, message, info=info)
         if reply is not None:
+            if reader_context != (self._channel_uids.get(channel),
+                                  self._channel_event_times.get(channel)):
+                logging.info("[spoollink] ch%d: discarding stale apply acknowledgement",
+                             channel)
+                return None
             logging.info("[spoollink] ch%d: spool %s applied", channel, spool_id)
             if uid_hex:
                 self._resolved_uids[channel] = uid_hex

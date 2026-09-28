@@ -1083,6 +1083,78 @@ class SpoolLinkRecoveryTests(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual(self.link._ptc_spool_ids[2], 0)
                 self.assertNotIn(2, self.link._known_spools)
 
+    async def test_delayed_old_ack_cannot_restore_previous_card_after_new_uid(self):
+        self.prime_spool_27()
+        entered, release = asyncio.Event(), asyncio.Event()
+        applications = []
+
+        async def lookup(uid):
+            return [OLD_SPOOL] if uid == OLD_UID else []
+
+        async def delayed_set(channel, message, info=None, status="ok"):
+            if info is not None:
+                applications.append(dict(info))
+                if len(applications) == 1:
+                    entered.set()
+                    await release.wait()
+            return {}
+
+        self.link._spoolman_find_by_card = lookup
+        self.link._spoollink_set = delayed_set
+        self.link._handle_status_update({"filament_detect": {"info": [None, None,
+            dict(OLD_TAG, CARD_EVENT_TIME=100.25)]}}, 10.0)
+        await entered.wait()
+        self.link._handle_status_update({"filament_detect": {"info": [None, None,
+            dict(NEW_TAG, CARD_EVENT_TIME=100.50)]}}, 10.1)
+        release.set()
+        await self.drain(16)
+        self.assertNotIn(2, self.link._known_spools)
+        self.assertNotIn(2, self.link._resolved_uids)
+        self.qualify_automatic_refresh(eventtime=11.0)
+        self.clear_uid_and_spool(eventtime=11.5)
+        await self.drain(16)
+        self.assertEqual(len(applications), 1)
+        self.assertEqual(self.link._ptc_spool_ids[2], 0)
+
+    async def test_delayed_ack_rejects_new_same_uid_event(self):
+        self.prime_spool_27()
+        self.link._channel_event_times[2] = 100.25
+        entered, release = asyncio.Event(), asyncio.Event()
+
+        async def delayed_set(*args, **kwargs):
+            entered.set()
+            await release.wait()
+            return {}
+
+        self.link._spoollink_set = delayed_set
+        task = asyncio.create_task(self.link._apply_spool(2, OLD_SPOOL, OLD_UID))
+        await entered.wait()
+        self.link._channel_event_times[2] = 100.50
+        self.link._known_spools.pop(2)
+        self.link._resolved_uids.pop(2)
+        release.set()
+        self.assertIsNone(await task)
+        self.assertNotIn(2, self.link._known_spools)
+        self.assertNotIn(2, self.link._resolved_uids)
+
+    async def test_delayed_ack_accepts_event_on_another_channel(self):
+        self.prime_spool_27()
+        entered, release = asyncio.Event(), asyncio.Event()
+
+        async def delayed_set(*args, **kwargs):
+            entered.set()
+            await release.wait()
+            return {}
+
+        self.link._spoollink_set = delayed_set
+        task = asyncio.create_task(self.link._apply_spool(2, OLD_SPOOL, OLD_UID))
+        await entered.wait()
+        self.link._channel_uids[0] = NEW_UID
+        self.link._channel_event_times[0] = 100.50
+        release.set()
+        self.assertEqual(await task, 27)
+        self.assertEqual(self.link._known_spools[2], (OLD_UID, OLD_SPOOL))
+
     async def test_disconnect_clears_retained_state_and_tasks(self):
         self.prime_spool_27()
         self.qualify_automatic_refresh()
