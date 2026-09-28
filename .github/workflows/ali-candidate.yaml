@@ -1,0 +1,71 @@
+name: Ali firmware candidate
+on:
+  push:
+    branches: [codex/u1-2.0-local-preservation]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ali-candidate-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  build:
+    if: github.repository == 'Ali-Jab/SnapmakerU1-Extended-Firmware' && github.ref == 'refs/heads/codex/u1-2.0-local-preservation'
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+      - name: Install test dependencies
+        run: sudo apt-get update && sudo apt-get install -y python3-jinja2
+      - name: Tests and source checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p candidate-evidence
+          python3 -B -m unittest discover -s overlays/firmware-extended/38-feature-spoollink/test -v 2>&1 | tee candidate-evidence/spoollink-tests.txt
+          python3 -B -m unittest discover -s overlays/firmware-extended/39-feature-tpu-print-guard/test -v 2>&1 | tee candidate-evidence/tpu-tests.txt
+          python3 -B -m unittest discover -s scripts -p 'test_check_line_endings.py' -v 2>&1 | tee candidate-evidence/line-ending-tests.txt
+          node --test overlays/firmware-extended/68-app-filament-ui/test/*.test.js 2>&1 | tee candidate-evidence/ui-tests.txt
+          python3 scripts/check_line_endings.py | tee candidate-evidence/source-line-endings.txt
+          git diff --exit-code
+          git diff --check
+      - name: Set candidate identity
+        shell: bash
+        run: |
+          echo "GIT_VERSION=2.0.0-ali-candidate-${GITHUB_SHA:0:12}" >> "$GITHUB_ENV"
+          echo "CANDIDATE_FILE=U1_extended_2.0.0-ali-candidate-${GITHUB_SHA:0:12}_upgrade.bin" >> "$GITHUB_ENV"
+          git rev-parse HEAD > candidate-evidence/source-sha.txt
+          git submodule status --recursive > candidate-evidence/submodules.txt
+          uname -m > candidate-evidence/architecture.txt
+          test "$(uname -m)" = aarch64
+      - name: Build regular extended firmware
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./dev.sh make firmware 2>&1 | tee candidate-evidence/download.txt
+          ./dev.sh make build PROFILE=extended BUILD_DIR=tmp/candidate-build OUTPUT_FILE="$CANDIDATE_FILE" 2>&1 | tee candidate-evidence/build.txt
+          docker image inspect snapmaker-u1-dev --format '{{.Id}}' > candidate-evidence/build-image-id.txt
+          sha256sum "$CANDIDATE_FILE" > candidate-evidence/SHA256SUMS
+      - name: Independently unpack and inspect packaged image
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./dev.sh bash scripts/verify_candidate_package.sh "$CANDIDATE_FILE" "$GITHUB_SHA" 2>&1 | tee candidate-evidence/package-checks.txt
+      - name: Upload candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: u1-extended-candidate-${{ github.sha }}
+          path: U1_extended_2.0.0-ali-candidate-*_upgrade.bin
+          if-no-files-found: error
+          retention-days: 30
+      - name: Upload verification evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: u1-candidate-evidence-${{ github.sha }}
+          path: candidate-evidence/
+          if-no-files-found: error
+          retention-days: 30
