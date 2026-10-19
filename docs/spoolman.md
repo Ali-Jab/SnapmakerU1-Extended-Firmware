@@ -42,14 +42,6 @@ and six-digit colour; if the UID already belongs to a spool, the dialog says so
 and offers the picker instead. It uses the same palettes as **User**, with
 diameter, density, and temperatures under **Advanced**.
 
-The submitted values decide the filament: left as the tag seeded them, an exact
-vendor/material/variant/colour match is reused (blank and `Basic` variants are
-equivalent); edited, a new filament is created. Vendors are matched
-case-insensitively. Weight defaults to the tag's net mass, else a reviewable
-1000 g. If a request fails after records were created, they are kept and their
-IDs reported; retrying rechecks UID ownership, so it assigns instead of
-duplicating.
-
 ## Assigning a Spool
 
 **Spool** on a channel card assigns an existing spool. The picker lists each
@@ -58,12 +50,6 @@ tag — same vendor, material, variant, colour — first under **Matches this
 tag**. Use it to store a spool's second tag, and for tags with no usable
 metadata. The card's **RFID tags** row shows the same UIDs, marking the one in
 that extruder.
-
-Assigning writes the UID through `SET_SPOOL_ID`, so SpoolLink stays the only
-writer, and the binding is verified afterwards. Taking a UID off another spool,
-or adding one to a spool that already has tags, asks for confirmation first.
-Archived spools and filaments are never used, since SpoolLink cannot resolve
-them.
 
 ## Apps
 
