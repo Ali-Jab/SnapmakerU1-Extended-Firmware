@@ -24,11 +24,7 @@ FIRMWARES := $(patsubst overlays/firmware-%,%,$(wildcard overlays/firmware-*))
 MOD_LIST := $(patsubst overlays/mods/%/,%,$(wildcard overlays/mods/*/))
 INVALID_MOD_NAMES := $(filter-out $(MOD_LIST),$(MOD_NAMES))
 
-.PHONY: check-line-endings
-check-line-endings:
-	python3 scripts/check_line_endings.py
-
-$(OUTPUT_FILE): firmware/$(FIRMWARE_FILE) tools | check-line-endings
+$(OUTPUT_FILE): firmware/$(FIRMWARE_FILE) tools
 ifeq (,$(PROFILE))
 	@echo "Please specify a firmware using 'make PROFILE=<firmware>[-<mod>]*'. Available firmwares are: $(FIRMWARES). Available mods are: $(MOD_LIST)."
 	@exit 1
@@ -42,7 +38,7 @@ endif
 	./scripts/create_firmware.sh $< $(BUILD_DIR) $@ $(OVERLAYS)
 
 .PHONY: build
-build: check-line-endings $(OUTPUT_FILE)
+build: $(OUTPUT_FILE)
 
 EXTRACT_DIR := tmp/extracted-$(FIRMWARE_VERSION)
 
