@@ -291,10 +291,6 @@ header h1 {
 }
 
 .channel-action-btn:hover { border-color: var(--accent); }
-.channel-action-btn.create-spool-btn {
-    background: var(--accent);
-}
-.channel-action-btn.create-spool-btn:hover { background: var(--accent-hover); }
 .channel-action-btn.spool-match-btn { border-color: var(--accent); }
 .channel-action-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 .channel-action-note { font-size: 12px; color: var(--muted); font-style: italic; }
@@ -740,6 +736,20 @@ input[type="checkbox"] {
 }
 
 .spoolman-search { margin-bottom: 2px; }
+
+.spoolman-create {
+    width: 100%;
+    margin-bottom: 10px;
+    padding: 8px;
+    border: 1px dashed var(--border);
+    border-radius: 6px;
+    background: transparent;
+    color: var(--accent);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}
+.spoolman-create:hover { border-color: var(--accent); background: var(--item); }
 
 .spoolman-list {
     overflow-y: auto;

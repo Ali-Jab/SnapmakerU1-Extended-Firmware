@@ -667,9 +667,6 @@ function createChannelCard(channel) {
     actions.appendChild(mkBtn('↻ Refresh', '', () => refreshSingleChannel(channel.channel)));
     actions.appendChild(mkBtn('✎ User', '', () => openOverwriteModal(channel.channel)));
     actions.appendChild(mkBtn('Reset', '', () => resetChannel(channel.channel)));
-    if (spoolmanActive && canCreateSpool(channel)) {
-        actions.appendChild(mkBtn('+ Create', 'create-spool-btn', () => openCreateSpoolModal(channel.channel)));
-    }
     if (spoolmanActive) {
         actions.appendChild(mkBtn('⊕ Spool', hasMatchingSpool(channel) ? 'spool-match-btn' : '',
             () => openSpoolPicker(channel.channel)));
@@ -1014,8 +1011,10 @@ async function executeSpoolAssignment(channel, targetSpool, uid) {
 
 async function openSpoolPicker(channel) {
     spoolPickerChannel = channel;
+    const ch = channelsData.find(item => item.channel === channel);
     document.getElementById('spoolman-modal-title').textContent = `Pick Spool — Extruder ${channel + 1}`;
     document.getElementById('spoolman-search').value = '';
+    document.getElementById('spoolman-create').style.display = canCreateSpool(ch) ? '' : 'none';
     const list = document.getElementById('spoolman-list');
     list.innerHTML = '<div class="spoolman-loading"><span class="spinner"></span> Loading…</div>';
     // The search box re-renders from this state, so clear the previous channel's.
@@ -1027,7 +1026,6 @@ async function openSpoolPicker(channel) {
     try {
         const spools = await fetchSpoolmanSpools();
         spoolPickerSpools = spools;
-        const ch = channelsData.find(c => c.channel === channel);
         spoolPickerCurrentId = ch ? ch.spool_id : null;
         spoolPickerSuggestedIds = new Set(
             findMatchingSpools(spools, ch?.rfid_data).map(spool => Number(spool.id)));
@@ -1474,6 +1472,11 @@ function initializeModals() {
     });
 
     document.getElementById('spoolman-close').addEventListener('click', () => closeModal('spoolman-modal'));
+    document.getElementById('spoolman-create').addEventListener('click', () => {
+        const channel = spoolPickerChannel;
+        closeModal('spoolman-modal');
+        if (channel != null) openCreateSpoolModal(channel);
+    });
     document.getElementById('spoolman-cancel').addEventListener('click', () => closeModal('spoolman-modal'));
     document.getElementById('spoolman-clear').addEventListener('click', () => {
         if (spoolPickerChannel !== null) clearSpoolForChannel(spoolPickerChannel);
