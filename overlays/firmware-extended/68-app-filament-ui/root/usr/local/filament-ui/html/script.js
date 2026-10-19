@@ -807,8 +807,8 @@ function defaultFilamentName(material, variant, color) {
 
 function canCreateSpool(channel) {
     const metadata = channel?.rfid_data || {};
-    // A channel that already has a spool needs `Spool` to change it, not a
-    // second spool for the same filament.
+    // A channel that already has a spool needs the Assign tab to change it,
+    // not a second spool for the same filament.
     return !!(
         channel?.spool_id == null &&
         normalizeUid(channel?.uid) &&
@@ -1193,6 +1193,14 @@ async function pickSpool(spoolId) {
 }
 
 async function clearSpoolForChannel(channel) {
+    const assigned = spoolPickerCurrentId != null ? spoolmanSpools.get(Number(spoolPickerCurrentId)) : null;
+    const rows = [
+        { label: 'Extruder', value: String(channel + 1) },
+        { label: 'Assigned to', value: assigned ? describeSpool(assigned)
+            : spoolPickerCurrentId != null ? `Spool #${spoolPickerCurrentId}` : 'Nothing' },
+    ];
+    if (!await requestConfirmation('Clear Spool', rows)) return;
+
     closeModal('spoolman-modal');
     try {
         showStatus('Clearing spool…', 'info');
