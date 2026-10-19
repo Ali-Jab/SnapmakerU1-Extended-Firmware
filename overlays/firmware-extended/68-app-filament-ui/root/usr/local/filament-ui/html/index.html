@@ -92,101 +92,99 @@
     </div>
 </div>
 
-<!-- Spoolman Spool Picker Modal -->
+<!-- Spoolman Spool Modal -->
 <div id="spoolman-modal" class="tag-edit-overlay" style="display:none">
     <div class="tag-edit-dialog spoolman-dialog" role="dialog" aria-modal="true">
         <div class="tag-edit-header">
-            <h2 class="tag-edit-title" id="spoolman-modal-title">Pick Spool</h2>
+            <h2 class="tag-edit-title" id="spoolman-modal-title">Spoolman</h2>
             <button class="tag-edit-close" id="spoolman-close" type="button" aria-label="Close">&times;</button>
         </div>
         <div class="tag-edit-body spoolman-body">
-            <input type="text" id="spoolman-search" class="spoolman-search" placeholder="Filter by name, brand, or material…" autocomplete="off">
-            <button type="button" id="spoolman-create" class="spoolman-create" style="display:none">+ Create a new spool from this tag</button>
-            <div id="spoolman-list" class="spoolman-list"></div>
-            <div class="modal-actions">
-                <button type="button" id="spoolman-clear" class="modal-btn-danger">Clear</button>
-                <button type="button" id="spoolman-cancel" class="modal-btn-cancel">Cancel</button>
+            <p class="dialog-intro" id="spoolman-intro"></p>
+
+            <div class="dialog-tabs">
+                <button type="button" class="dialog-tab active" id="spool-tab-assign">Assign</button>
+                <button type="button" class="dialog-tab" id="spool-tab-create">Create</button>
             </div>
-        </div>
-    </div>
-</div>
 
-<!-- Create Spoolman Spool Modal -->
-<div id="create-spool-modal" class="tag-edit-overlay" style="display:none">
-    <div class="tag-edit-dialog" role="dialog" aria-modal="true">
-        <div class="tag-edit-header">
-            <h2 class="tag-edit-title" id="create-spool-title">Create Spool</h2>
-            <button class="tag-edit-close" id="create-spool-close" type="button" aria-label="Close">&times;</button>
-        </div>
-        <div class="tag-edit-body">
-            <form id="create-spool-form">
-                <div id="create-spool-notice" class="overwrite-warning" style="display:none"></div>
-
-                <label class="form-label field-block">Material *
-                    <div class="palette" id="cs-material-palette"></div>
-                    <input type="hidden" name="material" id="cs-material-value">
-                </label>
-
-                <label class="form-label field-block">Brand *
-                    <div class="palette" id="cs-brand-palette"></div>
-                    <input type="text" id="cs-brand-custom" class="brand-custom-input" placeholder="Enter custom brand" style="display:none">
-                    <input type="hidden" name="vendor" id="cs-brand-value" value="Generic">
-                </label>
-
-                <label class="form-label field-block">Subtype
-                    <div class="palette" id="cs-subtype-palette"></div>
-                    <input type="hidden" name="variant" id="cs-subtype-value" value="Basic">
-                </label>
-
-                <div class="form-row">
-                    <label class="form-label">Color *
-                        <div class="color-input-group">
-                            <input type="color" id="cs-color-picker" aria-label="Pick colour">
-                            <input type="text" name="color" id="cs-color-value" required maxlength="7" spellcheck="false" autocomplete="off">
-                        </div>
-                    </label>
-                    <label class="form-label">Filament name *
-                        <input type="text" name="name" required autocomplete="off">
-                    </label>
+            <div id="spool-panel-assign" class="spoolman-body">
+                <input type="text" id="spoolman-search" class="spoolman-search" placeholder="Filter by name, brand, or material…" autocomplete="off">
+                <div id="spoolman-list" class="spoolman-list"></div>
+                <div class="modal-actions">
+                    <button type="button" id="spoolman-clear" class="modal-btn-danger">Clear</button>
+                    <button type="button" id="spoolman-cancel" class="modal-btn-cancel">Cancel</button>
                 </div>
+            </div>
 
-                <div class="form-row">
-                    <label class="form-label">Filament on spool (g) *
-                        <input type="number" name="net_weight" required min="1" step="any">
-                    </label>
-                    <label class="form-label">Empty spool / tare (g)
-                        <input type="number" name="tare_weight" min="0" step="any" placeholder="Optional">
-                    </label>
-                </div>
+            <div id="spool-panel-create" style="display:none">
+                <form id="create-spool-form">
+                    <div id="create-spool-notice" class="overwrite-warning" style="display:none"></div>
 
-                <details class="advanced-section">
-                    <summary>Advanced</summary>
+                    <label class="form-label field-block">Material *
+                        <div class="palette" id="cs-material-palette"></div>
+                        <input type="hidden" name="material" id="cs-material-value">
+                    </label>
+
+                    <label class="form-label field-block">Brand *
+                        <div class="palette" id="cs-brand-palette"></div>
+                        <input type="text" id="cs-brand-custom" class="brand-custom-input" placeholder="Enter custom brand" style="display:none">
+                        <input type="hidden" name="vendor" id="cs-brand-value" value="Generic">
+                    </label>
+
+                    <label class="form-label field-block">Subtype
+                        <div class="palette" id="cs-subtype-palette"></div>
+                        <input type="hidden" name="variant" id="cs-subtype-value" value="Basic">
+                    </label>
+
                     <div class="form-row">
-                        <label class="form-label">Diameter (mm)
-                            <input type="number" name="diameter" min="0.1" max="5" step="0.01">
+                        <label class="form-label">Color *
+                            <div class="color-input-group">
+                                <input type="color" id="cs-color-picker" aria-label="Pick colour">
+                                <input type="text" name="color" id="cs-color-value" required maxlength="7" spellcheck="false" autocomplete="off">
+                            </div>
                         </label>
-                        <label class="form-label">Density (g/cm&sup3;)
-                            <input type="number" name="density" min="0.5" max="3" step="0.01">
-                        </label>
-                        <label class="form-label">Nozzle (&deg;C)
-                            <input type="number" name="nozzle_temp" min="1" max="500" step="1">
-                        </label>
-                        <label class="form-label">Bed (&deg;C)
-                            <input type="number" name="bed_temp" min="1" max="200" step="1">
+                        <label class="form-label">Filament name *
+                            <input type="text" name="name" required autocomplete="off">
                         </label>
                     </div>
-                </details>
 
-                <div class="create-spool-source">
-                    <div><span>Extruder</span><strong id="create-spool-channel">-</strong></div>
-                    <div><span>Card UID</span><strong id="create-spool-uid">-</strong></div>
-                </div>
+                    <div class="form-row">
+                        <label class="form-label">Filament on spool (g) *
+                            <input type="number" name="net_weight" required min="1" step="any">
+                        </label>
+                        <label class="form-label">Empty spool / tare (g)
+                            <input type="number" name="tare_weight" min="0" step="any" placeholder="Optional">
+                        </label>
+                    </div>
 
-                <div class="modal-actions">
-                    <button type="button" id="create-spool-cancel" class="modal-btn-cancel">Cancel</button>
-                    <button type="submit" id="create-spool-submit" class="modal-btn-submit">Create and Assign</button>
-                </div>
-            </form>
+                    <details class="advanced-section">
+                        <summary>Advanced</summary>
+                        <div class="form-row">
+                            <label class="form-label">Diameter (mm)
+                                <input type="number" name="diameter" min="0.1" max="5" step="0.01">
+                            </label>
+                            <label class="form-label">Density (g/cm&sup3;)
+                                <input type="number" name="density" min="0.5" max="3" step="0.01">
+                            </label>
+                            <label class="form-label">Nozzle (&deg;C)
+                                <input type="number" name="nozzle_temp" min="1" max="500" step="1">
+                            </label>
+                            <label class="form-label">Bed (&deg;C)
+                                <input type="number" name="bed_temp" min="1" max="200" step="1">
+                            </label>
+                        </div>
+                    </details>
+
+                    <div class="create-spool-source">
+                        <div><span>Card UID</span><strong id="create-spool-uid">-</strong></div>
+                    </div>
+
+                    <div class="modal-actions">
+                        <button type="button" id="create-spool-cancel" class="modal-btn-cancel">Cancel</button>
+                        <button type="submit" id="create-spool-submit" class="modal-btn-submit">Create and Assign</button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 </div>

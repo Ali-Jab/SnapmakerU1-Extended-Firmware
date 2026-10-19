@@ -291,7 +291,6 @@ header h1 {
 }
 
 .channel-action-btn:hover { border-color: var(--accent); }
-.channel-action-btn.spool-match-btn { border-color: var(--accent); }
 .channel-action-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 .channel-action-note { font-size: 12px; color: var(--muted); font-style: italic; }
 
@@ -737,19 +736,44 @@ input[type="checkbox"] {
 
 .spoolman-search { margin-bottom: 2px; }
 
-.spoolman-create {
-    width: 100%;
-    margin-bottom: 10px;
-    padding: 8px;
-    border: 1px dashed var(--border);
+.dialog-intro {
+    margin: 0;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
     border-radius: 6px;
-    background: transparent;
-    color: var(--accent);
+    background: var(--item);
     font-size: 12px;
+    line-height: 1.5;
+    color: var(--muted);
+}
+
+.dialog-intro::before {
+    content: 'ⓘ';
+    margin-right: 7px;
+    color: var(--accent);
+    font-size: 13px;
+}
+
+.dialog-tabs {
+    display: flex;
+    gap: 4px;
+    border-bottom: 1px solid var(--border);
+}
+
+.dialog-tab {
+    padding: 7px 14px;
+    border: none;
+    border-bottom: 2px solid transparent;
+    background: transparent;
+    color: var(--muted);
+    font-size: 13px;
     font-weight: 600;
     cursor: pointer;
 }
-.spoolman-create:hover { border-color: var(--accent); background: var(--item); }
+.dialog-tab:hover:not(:disabled) { color: var(--text); }
+.dialog-tab.active { color: var(--text); border-bottom-color: var(--accent); }
+.dialog-tab:disabled { opacity: 0.4; cursor: not-allowed; }
 
 .spoolman-list {
     overflow-y: auto;
@@ -909,13 +933,23 @@ input[type="checkbox"] {
 }
 
 .confirm-content {
-    color: var(--text);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
     font-size: 13px;
-    line-height: 1.5;
 }
 
-.confirm-content p { margin: 0 0 10px; }
-.confirm-content p:last-child { margin-bottom: 0; }
+.confirm-row {
+    display: grid;
+    grid-template-columns: 110px 1fr;
+    gap: 10px;
+    padding: 7px 10px;
+    border-radius: 4px;
+    background: var(--item);
+}
+
+.confirm-label { color: var(--muted); }
+.confirm-value { color: var(--text); word-break: break-word; }
 
 @media (max-width: 560px) {
     .create-spool-source { grid-template-columns: 1fr; }
