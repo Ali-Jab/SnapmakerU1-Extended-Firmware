@@ -224,9 +224,9 @@ async function spoolmanRequest(requestMethod, path, options = {}) {
     return await sendRPC('server.spoolman.proxy', params);
 }
 
-async function fetchSpoolmanAllSpools() {
-    const result = await spoolmanRequest('GET', '/v1/spool', { query: 'limit=1000' });
-    if (!Array.isArray(result)) throw new Error('Spoolman returned an invalid spool list');
+async function fetchSpoolmanList(path) {
+    const result = await spoolmanRequest('GET', path, { query: 'limit=1000' });
+    if (!Array.isArray(result)) throw new Error(`Spoolman returned an invalid list for ${path}`);
     return result;
 }
 
@@ -234,18 +234,6 @@ async function fetchSpoolmanSpool(id) {
     try {
         return await spoolmanRequest('GET', `/v1/spool/${id}`);
     } catch { return null; }
-}
-
-async function fetchSpoolmanVendors() {
-    const result = await spoolmanRequest('GET', '/v1/vendor', { query: 'limit=1000' });
-    if (!Array.isArray(result)) throw new Error('Spoolman returned an invalid vendor list');
-    return result;
-}
-
-async function fetchSpoolmanFilaments() {
-    const result = await spoolmanRequest('GET', '/v1/filament', { query: 'limit=1000' });
-    if (!Array.isArray(result)) throw new Error('Spoolman returned an invalid filament list');
-    return result;
 }
 
 async function refreshSpoolWeights() {
@@ -759,35 +747,17 @@ function encodeExtraString(value) {
     return JSON.stringify(cleanText(value));
 }
 
-function uniqueUids(values) {
+function parseCardUids(spool) {
     const seen = new Set();
-    const result = [];
-    for (const value of values || []) {
+    const uids = [];
+    for (const value of decodeExtraString(spool?.extra?.card_uids || '').split(',')) {
         const uid = normalizeUid(value);
         if (uid && !seen.has(uid)) {
             seen.add(uid);
-            result.push(uid);
+            uids.push(uid);
         }
     }
-    return result;
-}
-
-function parseCardUids(spool) {
-    const raw = decodeExtraString(spool?.extra?.card_uids || '');
-    return uniqueUids(raw.split(','));
-}
-
-function encodeCardUids(values) {
-    return encodeExtraString(uniqueUids(values).join(','));
-}
-
-function parseVariant(filament) {
-    return decodeExtraString(filament?.extra?.variant || '');
-}
-
-function canonicalVariant(value) {
-    const variant = normalizeText(value);
-    return variant === 'basic' ? '' : variant;
+    return uids;
 }
 
 function normalizeColor(value) {
@@ -830,14 +800,16 @@ function metadataKey(metadata) {
     const material = normalizeText(metadata?.material || metadata?.type);
     const color = normalizeColor(metadata?.color);
     if (!vendor || !material || !color) return null;
-    return `${vendor}|${material}|${canonicalVariant(metadata?.variant || metadata?.sub_type)}|${color}`;
+    // A blank variant and `Basic` mean the same thing.
+    const variant = normalizeText(metadata?.variant || metadata?.sub_type);
+    return `${vendor}|${material}|${variant === 'basic' ? '' : variant}|${color}`;
 }
 
 function filamentKey(filament) {
     return metadataKey({
         vendor: filament?.vendor?.name,
         material: filament?.material,
-        variant: parseVariant(filament),
+        variant: decodeExtraString(filament?.extra?.variant || ''),
         color: filament?.color_hex,
     });
 }
@@ -904,7 +876,7 @@ function buildSpoolPayload(filamentId, values) {
         filament_id: id,
         initial_weight: netWeight,
         remaining_weight: netWeight,
-        extra: { card_uids: encodeCardUids([uid]) },
+        extra: { card_uids: encodeExtraString(uid) },
     };
     if (tareWeight != null && tareWeight >= 0) payload.spool_weight = tareWeight;
     return payload;
@@ -979,10 +951,6 @@ function describeStoredUids(spool, channelUid) {
         .join('');
 }
 
-function delay(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-}
-
 function ensureChannelUid(channel, expectedUid) {
     const actualUid = currentChannelUid(channel);
     if (actualUid !== normalizeUid(expectedUid)) {
@@ -1012,37 +980,33 @@ function requestConfirmation(title, paragraphs) {
     return new Promise(resolve => { confirmResolve = resolve; });
 }
 
-// SET_SPOOL_ID returns before the UID has moved: Moonraker dispatches the
-// remote method asynchronously and SpoolLink then does its own retried
-// GET/GET/PATCH, so poll until the target spool owns the UID on its own.
-async function waitForRfidAssignment(targetId, uid) {
+async function executeSpoolAssignment(channel, targetSpool, uid) {
+    ensureChannelUid(channel, uid);
+    await sendGcode(`SET_SPOOL_ID LANE=E${channel} SPOOL_ID=${targetSpool.id}`);
+    if (!uid) {
+        // The gcode already succeeded, so a failed refresh must not be reported
+        // as a failed assignment; the periodic refresh catches up.
+        const spool = await fetchSpoolmanSpool(targetSpool.id);
+        if (spool) spoolmanSpools.set(Number(spool.id), spool);
+        rebuildFromCache();
+        return;
+    }
+
+    // SET_SPOOL_ID returns before the UID has moved: Moonraker dispatches the
+    // remote method asynchronously and SpoolLink then does its own retried
+    // GET/GET/PATCH, so poll until the target spool owns the UID on its own.
     for (const wait of [500, 750, 1000, 1500, 2000, 2000]) {
-        await delay(wait);
-        const spools = await fetchSpoolmanAllSpools().catch(() => null);
-        if (!spools) continue;
-        const owners = findUidOwners(spools, uid);
-        if (owners.length === 1 && Number(owners[0].id) === Number(targetId)) {
-            spoolmanSpools.set(Number(targetId), owners[0]);
+        await new Promise(resolve => setTimeout(resolve, wait));
+        const spools = await fetchSpoolmanList('/v1/spool').catch(() => null);
+        const owners = spools ? findUidOwners(spools, uid) : [];
+        if (owners.length === 1 && Number(owners[0].id) === Number(targetSpool.id)) {
+            spoolmanSpools.set(Number(targetSpool.id), owners[0]);
             rebuildFromCache();
             return;
         }
     }
     rebuildFromCache();
     throw new Error(`RFID ${formatUid(uid)} assignment could not be verified`);
-}
-
-async function executeSpoolAssignment(channel, targetSpool, uid) {
-    ensureChannelUid(channel, uid);
-    await sendGcode(`SET_SPOOL_ID LANE=E${channel} SPOOL_ID=${targetSpool.id}`);
-    if (uid) {
-        await waitForRfidAssignment(targetSpool.id, uid);
-    } else {
-        // The gcode already succeeded, so a failed refresh must not be reported
-        // as a failed assignment; the periodic refresh catches up.
-        const spool = await fetchSpoolmanSpool(targetSpool.id);
-        if (spool) spoolmanSpools.set(Number(spool.id), spool);
-        rebuildFromCache();
-    }
 }
 
 async function openSpoolPicker(channel) {
@@ -1058,7 +1022,7 @@ async function openSpoolPicker(channel) {
     openModal('spoolman-modal');
 
     try {
-        const spools = await fetchSpoolmanAllSpools();
+        const spools = await fetchSpoolmanList('/v1/spool');
         spoolPickerSpools = spools;
         const ch = channelsData.find(c => c.channel === channel);
         spoolPickerCurrentId = ch ? ch.spool_id : null;
@@ -1143,16 +1107,12 @@ function renderSpoolList(filter) {
 }
 
 async function pickSpool(spoolId) {
-    if (spoolPickerChannel === null) return;
-    await assignSpoolToChannel(spoolPickerChannel, spoolId, true);
-}
-
-async function assignSpoolToChannel(channel, spoolId, closePicker) {
-    if (spoolAssignmentBusy) return;
+    if (spoolPickerChannel === null || spoolAssignmentBusy) return;
+    const channel = spoolPickerChannel;
     spoolAssignmentBusy = true;
     try {
         const uid = currentChannelUid(channel);
-        const spools = await fetchSpoolmanAllSpools();
+        const spools = await fetchSpoolmanList('/v1/spool');
         ensureChannelUid(channel, uid);
         const target = spools.find(spool => Number(spool.id) === Number(spoolId));
         if (!target) throw new Error(`Spool #${spoolId} no longer exists`);
@@ -1174,7 +1134,7 @@ async function assignSpoolToChannel(channel, spoolId, closePicker) {
             ensureChannelUid(channel, uid);
         }
 
-        if (closePicker) closeModal('spoolman-modal');
+        closeModal('spoolman-modal');
         showStatus('Assigning spool…', 'info');
         await executeSpoolAssignment(channel, target, uid);
         showStatus(`Spool #${spoolId} assigned to Extruder ${channel + 1}`, 'success');
@@ -1217,10 +1177,6 @@ function setCreateSpoolBusy(busy) {
     }
 }
 
-function readCreateFormValues() {
-    return Object.fromEntries(new FormData(document.getElementById('create-spool-form')));
-}
-
 function setCreateSpoolColor(hex) {
     const color = normalizeColor(hex) || 'CCCCCC';
     document.getElementById('cs-color-value').value = color;
@@ -1258,20 +1214,6 @@ function createSpoolUseExisting() {
     if (channel != null) openSpoolPicker(channel);
 }
 
-// Say which spools this tag could join before anything is written, so
-// assigning one of them stays the obvious alternative to creating another.
-function describeCreateSpoolPlan(matchingSpools, matchingFilament) {
-    const parts = [];
-    if (matchingSpools.length > 0) {
-        parts.push(`${matchingSpools.map(spool => `#${spool.id}`).join(', ')} already use this ` +
-            'filament. "Use existing spool" links the tag to one of them.');
-    }
-    parts.push(matchingFilament
-        ? `Creating adds a new spool to filament #${matchingFilament.id}.`
-        : 'Creating adds a new filament and a new spool.');
-    setCreateSpoolNotice(parts.join(' '));
-}
-
 async function openCreateSpoolModal(channelNumber) {
     const channel = channelsData.find(item => item.channel === channelNumber);
     if (!channel || !canCreateSpool(channel)) {
@@ -1294,8 +1236,8 @@ async function openCreateSpoolModal(channelNumber) {
 
     try {
         const [spools, filaments] = await Promise.all([
-            fetchSpoolmanAllSpools(),
-            fetchSpoolmanFilaments(),
+            fetchSpoolmanList('/v1/spool'),
+            fetchSpoolmanList('/v1/filament'),
         ]);
         ensureChannelUid(channelNumber, uid);
 
@@ -1309,9 +1251,18 @@ async function openCreateSpoolModal(channelNumber) {
             return;
         }
 
-        describeCreateSpoolPlan(
-            findMatchingSpools(spools, metadata),
-            findMatchingFilaments(filaments, metadata)[0] || null);
+        // Say which spools this tag could join before anything is written, so
+        // assigning one stays the obvious alternative to creating another.
+        const matching = findMatchingSpools(spools, metadata);
+        const filament = findMatchingFilaments(filaments, metadata)[0] || null;
+        const notice = matching.length > 0
+            ? [`${matching.map(spool => `#${spool.id}`).join(', ')} already use this filament. ` +
+               '"Use existing spool" links the tag to one of them.']
+            : [];
+        notice.push(filament
+            ? `Creating adds a new spool to filament #${filament.id}.`
+            : 'Creating adds a new filament and a new spool.');
+        setCreateSpoolNotice(notice.join(' '));
         setCreateSpoolBusy(false);
     } catch (err) {
         setCreateSpoolNotice(`Cannot prepare spool creation: ${err.message}`, 'error');
@@ -1352,7 +1303,7 @@ async function handleCreateSpool(event) {
     setCreateSpoolNotice('Rechecking Spoolman before creating records…');
 
     try {
-        const values = readCreateFormValues();
+        const values = Object.fromEntries(new FormData(event.currentTarget));
         // Validate before writing anything, so a rejected field cannot leave a
         // half-created vendor behind.
         const filamentPayload = buildFilamentPayload(values, null);
@@ -1361,9 +1312,9 @@ async function handleCreateSpool(event) {
 
         ensureChannelUid(context.channel, context.uid);
         const [spools, vendors, filaments] = await Promise.all([
-            fetchSpoolmanAllSpools(),
-            fetchSpoolmanVendors(),
-            fetchSpoolmanFilaments(),
+            fetchSpoolmanList('/v1/spool'),
+            fetchSpoolmanList('/v1/vendor'),
+            fetchSpoolmanList('/v1/filament'),
         ]);
         ensureChannelUid(context.channel, context.uid);
 
@@ -1515,9 +1466,7 @@ function initializeModals() {
     });
     document.getElementById('create-spool-form').addEventListener('submit', handleCreateSpool);
     document.getElementById('create-spool-existing').addEventListener('click', createSpoolUseExisting);
-    document.getElementById('cs-color-picker').addEventListener('input', e => {
-        document.getElementById('cs-color-value').value = e.target.value.replace('#', '').toUpperCase();
-    });
+    document.getElementById('cs-color-picker').addEventListener('input', e => setCreateSpoolColor(e.target.value));
     document.getElementById('cs-color-value').addEventListener('input', e => {
         const color = normalizeColor(e.target.value);
         if (color) document.getElementById('cs-color-picker').value = `#${color}`;
