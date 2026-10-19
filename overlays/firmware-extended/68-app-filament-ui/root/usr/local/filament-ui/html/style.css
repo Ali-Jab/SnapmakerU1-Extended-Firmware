@@ -594,6 +594,19 @@ input[type="checkbox"] {
     margin-bottom: 0;
 }
 
+.color-input-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.color-input-group input[type="text"] {
+    flex: 1;
+    min-width: 0;
+    font-family: monospace;
+    text-transform: uppercase;
+}
+
 .advanced-colors .color-input-group input[type="text"] {
     width: 5rem;
     flex: 0 0 5rem;
@@ -623,6 +636,12 @@ input[type="checkbox"] {
     margin-bottom: 16px;
     font-size: 13px;
     color: var(--warning);
+}
+
+.overwrite-warning.error {
+    border-color: rgba(244, 67, 54, 0.45);
+    background: rgba(244, 67, 54, 0.12);
+    color: #ff8a80;
 }
 
 /* ── Modal action row ────────────────────────────────────────────────────── */
@@ -798,15 +817,41 @@ input[type="checkbox"] {
     font-family: monospace;
 }
 
-.spoolman-rfid-count {
-    display: inline-block;
-    margin-top: 3px;
-    padding: 1px 5px;
+.spoolman-item.suggested {
+    box-shadow: inset 0 0 0 1px rgba(76, 175, 80, 0.5);
+}
+
+.spoolman-badge {
+    margin-left: 6px;
+    padding: 1px 6px;
     border-radius: 999px;
-    background: var(--border);
-    color: var(--muted);
+    background: rgba(76, 175, 80, 0.18);
+    color: var(--success);
     font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    vertical-align: middle;
+}
+
+.spoolman-group {
+    margin: 8px 2px 2px;
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+}
+
+.spoolman-group:first-child { margin-top: 0; }
+
+.spoolman-uids {
+    color: var(--muted);
+    font-family: monospace;
+    font-size: 11px;
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .spoolman-empty,
@@ -819,15 +864,37 @@ input[type="checkbox"] {
 
 .spool-remaining { color: var(--success); font-weight: 600; }
 
+.uid-current,
+.uid-other {
+    display: inline-block;
+    margin: 2px 4px 0 0;
+    padding: 1px 6px;
+    border-radius: 999px;
+    font-family: monospace;
+    font-size: 11px;
+}
+
+.uid-current {
+    background: rgba(76, 175, 80, 0.18);
+    color: var(--success);
+    font-weight: 600;
+}
+
+.uid-other {
+    background: var(--item);
+    color: var(--muted);
+}
+
+.uid-none { color: var(--muted); }
+
 /* Create-spool and RFID confirmation dialogs */
-.create-spool-dialog { width: 720px; }
 .confirm-dialog { width: 520px; }
 
 .create-spool-source {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
-    margin-bottom: 16px;
+    margin-top: 16px;
 }
 
 .create-spool-source > div {
@@ -839,8 +906,7 @@ input[type="checkbox"] {
     background: var(--item);
 }
 
-.create-spool-source span,
-.create-spool-section-title {
+.create-spool-source span {
     color: var(--muted);
     font-size: 11px;
     font-weight: 600;
@@ -851,33 +917,6 @@ input[type="checkbox"] {
 .create-spool-source strong {
     font-family: monospace;
     font-size: 13px;
-}
-
-.create-spool-section-title {
-    margin: 16px 0 8px;
-}
-
-.create-spool-notice {
-    margin-bottom: 16px;
-    padding: 10px 12px;
-    border: 1px solid rgba(255, 152, 0, 0.4);
-    border-radius: 6px;
-    background: rgba(255, 152, 0, 0.12);
-    color: var(--warning);
-    font-size: 13px;
-}
-
-.create-spool-notice.error {
-    border-color: rgba(244, 67, 54, 0.45);
-    background: rgba(244, 67, 54, 0.12);
-    color: #ff8a80;
-}
-
-.form-help {
-    margin: 5px 0 0;
-    color: var(--muted);
-    font-size: 11px;
-    line-height: 1.4;
 }
 
 .confirm-content {

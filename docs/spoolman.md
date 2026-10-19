@@ -34,59 +34,64 @@ Enable in the [firmware-config](firmware_config.md) web interface under
 URL including scheme and port (e.g. `http://192.168.1.100:7912`). Set the same
 toggle to **Disabled** to turn it off.
 
-## Creating a Spool from a U1 Channel
+## Creating or Assigning a Spool from a U1 Channel
 
-The U1 Filament Manager can create and assign a Spoolman spool directly from
-a metadata-bearing RFID tag:
+Each channel offers both options, and neither consults archived records —
+SpoolLink cannot resolve an archived spool, so binding a tag to one would
+produce a pairing the printer could never use.
 
-1. Open **Filament Manager** and select **Read spool tags**.
-2. On a channel whose detected UID is not already stored in Spoolman, select
-   **Create Spool**.
-3. Review the filament and mass values, then select **Create and Assign**.
+**Spool** assigns an existing spool. The picker lists non-archived spools with
+the card UIDs already stored on each, and puts the spools whose filament
+matches the detected tag — same vendor, material, variant, and colour — first
+under **Matches this tag**. This is also how a spool's second physical tag is
+stored: insert it, select **Spool**, and pick the spool it belongs to. The
+**RFID tags** row on each card shows which UIDs a spool already holds, marking
+the one currently in that extruder.
 
-The button is shown only when the tag provides a valid UID, vendor, material,
-and six-digit colour. UID-only, empty, and malformed tags cannot provide enough
-metadata to create a spool. They can still be assigned to an existing spool by
-using **Spool**.
+**Create** creates a new spool and assigns it. It appears only when the tag
+provides a valid UID, vendor, material, and six-digit colour that no spool
+already owns; UID-only, empty, and malformed tags must use **Spool** instead.
+The dialog offers the same tap-to-select material, brand, and subtype palettes
+as **User**, with diameter, density, and temperatures under **Advanced**.
 
-Before writing anything, the dialog reloads the Spoolman spool, vendor, and
-filament records. It reuses a vendor case-insensitively. It also reuses an exact
-filament match based on vendor, material, variant, and colour; blank and
-`Basic` variants are treated as equivalent. If multiple exact filament matches
-exist, the user must select one. Otherwise the dialog creates the required
-vendor and filament before creating the spool.
+Before writing anything, **Create** reloads the Spoolman spool, vendor, and
+filament records and states what it would do: which existing spools already use
+this filament, whether the channel is already assigned to one, and whether a
+filament record will be reused or created. **Use existing spool** switches to
+the picker from there.
 
-The initial and remaining filament values use the tag's reported net mass when
-it is valid, or a reviewed default of 1000 g. When an existing filament is
-reused, its empty-spool mass is inherited. For a new filament, empty-spool mass
-is optional. Diameter, density, temperatures, colour, name, and both mass
-values remain reviewable in the dialog.
+Which filament is used follows the submitted values, so leaving the form as the
+tag seeded it reuses an exact vendor/material/variant/colour match (blank and
+`Basic` variants are equivalent), while editing any of those fields creates a
+new filament. Vendors are reused case-insensitively, lowest ID first. Initial
+and remaining filament use the tag's reported net mass when it is valid,
+otherwise a reviewable 1000 g; empty-spool mass is optional.
 
 Creation stores only the SpoolLink fields documented below: `card_uids` on the
-spool and, when present, `variant` on a newly created filament. If a request
-fails after one or more records were created, those records are retained and
-their IDs are reported. Retrying is safe because the dialog rechecks UID
-ownership and exact filament matches before creating additional records.
+spool and, when present, `variant` on a new filament. If a request fails after
+records were created, they are kept and their IDs reported. Retrying is safe:
+UID ownership and filament matches are rechecked first, and the existing spool
+is assigned instead if SpoolLink claimed the tag meanwhile.
 
-## Two RFID Tags on One Spool
+## RFID Assignment Safeguards
 
-When a channel is already assigned to a Spoolman spool and reads its unowned
-second physical tag, select **Add RFID**. For an unassigned channel, use
-**Spool** and select the intended spool. SpoolLink appends the UID to that
-spool's comma-separated `card_uids` value. The following safeguards apply:
+SpoolLink is the only writer of UID bindings. The Filament Manager always goes
+through `SET_SPOOL_ID`, which appends the UID to that spool's comma-separated
+`card_uids` value.
 
-- Adding the first UID needs no additional confirmation beyond selecting the
-  spool.
+- Adding the first UID needs no confirmation beyond selecting the spool.
 - Adding a second UID requires an explicit **Add Second RFID** confirmation.
 - Adding a third or later UID requires an explicit warning confirmation.
 - Moving a UID from another spool requires an explicit move confirmation.
 - A UID found on more than one spool is rejected until the duplicate ownership
   is corrected in Spoolman.
 
-After `SET_SPOOL_ID`, the Filament Manager reloads Spoolman and verifies that
-the UID has exactly one owner and that all UIDs previously stored on the target
-spool remain present. Filament metadata alone is never used to pair two tags;
-identical spools can legitimately have the same metadata.
+Afterwards the Filament Manager reloads Spoolman and verifies that the UID has
+exactly one owner and that every UID previously stored on the target spool is
+still present. Verification is retried for several seconds, because SpoolLink
+writes the binding asynchronously after the gcode returns. Filament metadata
+alone is never used to pair two tags; identical spools can legitimately share
+the same metadata.
 
 ## Apps
 
