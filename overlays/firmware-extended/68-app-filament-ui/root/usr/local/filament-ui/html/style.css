@@ -259,6 +259,7 @@ header h1 {
     font-family: monospace;
     font-size: 12px;
     color: var(--muted);
+    white-space: nowrap;
 }
 
 .temp-range { color: var(--warning); }
@@ -294,6 +295,7 @@ header h1 {
     background: var(--accent);
 }
 .channel-action-btn.create-spool-btn:hover { background: var(--accent-hover); }
+.channel-action-btn.spool-match-btn { border-color: var(--accent); }
 .channel-action-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 .channel-action-note { font-size: 12px; color: var(--muted); font-style: italic; }
 
@@ -864,29 +866,6 @@ input[type="checkbox"] {
 
 .spool-remaining { color: var(--success); font-weight: 600; }
 
-.uid-current,
-.uid-other {
-    display: inline-block;
-    margin: 2px 4px 0 0;
-    padding: 1px 6px;
-    border-radius: 999px;
-    font-family: monospace;
-    font-size: 11px;
-}
-
-.uid-current {
-    background: rgba(76, 175, 80, 0.18);
-    color: var(--success);
-    font-weight: 600;
-}
-
-.uid-other {
-    background: var(--item);
-    color: var(--muted);
-}
-
-.uid-none { color: var(--muted); }
-
 /* Create-spool and RFID confirmation dialogs */
 .confirm-dialog { width: 520px; }
 
@@ -940,7 +919,7 @@ input[type="checkbox"] {
     border-radius: 6px;
     padding: 8px 12px;
     min-width: 160px;
-    max-width: 240px;
+    max-width: 340px;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.55);
     pointer-events: none;
 }
