@@ -771,12 +771,38 @@ function materialDensity(material, reportedDensity) {
     return MATERIALS.find(([name]) => name === wanted)?.[1] || 1.24;
 }
 
-function defaultFilamentName(material, variant) {
-    const name = cleanText(material);
-    const subtype = cleanText(variant);
-    if (!name) return 'Custom Filament';
-    if (!subtype || normalizeText(subtype) === normalizeText(name)) return name;
-    return `${name} ${subtype}`;
+// A rough colour word for the seeded filament name. It only has to read better
+// than a hex code: the field stays editable, and filament matching compares the
+// RGB value rather than the name.
+function colorName(value) {
+    const color = normalizeColor(value);
+    if (!color) return '';
+    const [red, green, blue] = [0, 2, 4].map(at => parseInt(color.slice(at, at + 2), 16));
+    const max = Math.max(red, green, blue);
+    const min = Math.min(red, green, blue);
+    if (max - min < 32) return max > 200 ? 'White' : (max < 64 ? 'Black' : 'Gray');
+
+    const degrees = 60 * (max === red
+        ? (((green - blue) / (max - min)) + 6) % 6
+        : max === green
+            ? ((blue - red) / (max - min)) + 2
+            : ((red - green) / (max - min)) + 4);
+    if (degrees >= 10 && degrees < 40 && max < 160) return 'Brown';
+    if (degrees < 15)  return 'Red';
+    if (degrees < 40)  return 'Orange';
+    if (degrees < 70)  return 'Yellow';
+    if (degrees < 165) return 'Green';
+    if (degrees < 195) return 'Cyan';
+    if (degrees < 255) return 'Blue';
+    if (degrees < 290) return 'Purple';
+    if (degrees < 330) return 'Magenta';
+    return 'Red';
+}
+
+function defaultFilamentName(material, variant, color) {
+    const parts = [cleanText(material), cleanText(variant), colorName(color)].filter(Boolean);
+    const deduped = parts.filter((part, at) => at === 0 || normalizeText(part) !== normalizeText(parts[at - 1]));
+    return deduped.join(' ') || 'Custom Filament';
 }
 
 function canCreateSpool(channel) {
@@ -1012,6 +1038,8 @@ function showSpoolTab(tab) {
     document.getElementById('spool-tab-create').classList.toggle('active', create);
     document.getElementById('spool-panel-assign').style.display = create ? 'none' : '';
     document.getElementById('spool-panel-create').style.display = create ? '' : 'none';
+    document.getElementById('spool-actions-assign').style.display = create ? 'none' : '';
+    document.getElementById('spool-actions-create').style.display = create ? '' : 'none';
 }
 
 async function openSpoolPicker(channel) {
@@ -1213,7 +1241,7 @@ function applyCreateSpoolDefaults(metadata) {
     setFilamentValue('createSubtype', variant);
     setCreateSpoolColor(metadata.color);
 
-    elements.name.value = defaultFilamentName(metadata.type, variant);
+    elements.name.value = defaultFilamentName(metadata.type, variant, metadata.color);
     elements.net_weight.value = reportedWeight != null && reportedWeight > 0 ? reportedWeight : 1000;
     elements.tare_weight.value = '';
     elements.diameter.value = finiteNumber(metadata.diameter) || 1.75;

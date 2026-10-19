@@ -110,10 +110,6 @@
             <div id="spool-panel-assign" class="spoolman-body">
                 <input type="text" id="spoolman-search" class="spoolman-search" placeholder="Filter by name, brand, or material…" autocomplete="off">
                 <div id="spoolman-list" class="spoolman-list"></div>
-                <div class="modal-actions">
-                    <button type="button" id="spoolman-clear" class="modal-btn-danger">Clear</button>
-                    <button type="button" id="spoolman-cancel" class="modal-btn-cancel">Cancel</button>
-                </div>
             </div>
 
             <div id="spool-panel-create" style="display:none">
@@ -179,11 +175,18 @@
                         <div><span>Card UID</span><strong id="create-spool-uid">-</strong></div>
                     </div>
 
-                    <div class="modal-actions">
-                        <button type="button" id="create-spool-cancel" class="modal-btn-cancel">Cancel</button>
-                        <button type="submit" id="create-spool-submit" class="modal-btn-submit">Create and Assign</button>
-                    </div>
                 </form>
+            </div>
+        </div>
+
+        <div class="tag-edit-footer">
+            <div class="modal-actions" id="spool-actions-assign">
+                <button type="button" id="spoolman-clear" class="modal-btn-danger">Clear</button>
+                <button type="button" id="spoolman-cancel" class="modal-btn-cancel">Cancel</button>
+            </div>
+            <div class="modal-actions" id="spool-actions-create" style="display:none">
+                <button type="button" id="create-spool-cancel" class="modal-btn-cancel">Cancel</button>
+                <button type="submit" form="create-spool-form" id="create-spool-submit" class="modal-btn-submit">Create and Assign</button>
             </div>
         </div>
     </div>

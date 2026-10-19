@@ -350,6 +350,15 @@ header h1 {
     overflow-y: auto;
 }
 
+/* Actions outside the scrolling body, so they stay reachable in a dialog
+   taller than the viewport. */
+.tag-edit-footer {
+    flex-shrink: 0;
+    padding: 0 24px 20px;
+}
+
+.tag-edit-footer .modal-actions { margin-top: 0; }
+
 /* ── Form ────────────────────────────────────────────────────────────────── */
 
 .form-row {
@@ -651,6 +660,7 @@ input[type="checkbox"] {
     padding-top: 16px;
     border-top: 1px solid var(--item);
 }
+
 
 .modal-btn-cancel {
     background: var(--border);
