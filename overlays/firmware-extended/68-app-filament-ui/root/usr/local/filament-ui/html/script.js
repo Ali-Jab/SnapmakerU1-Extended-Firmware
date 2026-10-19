@@ -34,7 +34,7 @@ let spoolPickerCurrentId = null;
 let spoolPickerSuggestedIds = new Set();
 let spoolAssignmentBusy = false;
 let createSpoolContext = null;
-let rfidConfirmationResolve = null;
+let confirmResolve = null;
 
 // Last known full status — merged incrementally from notify_status_update
 let cachedStatus = {
@@ -217,8 +217,6 @@ async function loadInitialData() {
     }
 }
 
-// Without `use_v2_response` the Moonraker proxy calls raise_for_status(), so an
-// HTTP error arrives here as a rejected RPC instead of a value to unwrap.
 async function spoolmanRequest(requestMethod, path, options = {}) {
     const params = { request_method: requestMethod, path };
     if (options.query) params.query = options.query;
@@ -992,26 +990,26 @@ function ensureChannelUid(channel, expectedUid) {
     }
 }
 
-function resolveRfidConfirmation(accepted) {
-    closeModal('rfid-confirm-modal');
-    if (!rfidConfirmationResolve) return;
-    const resolve = rfidConfirmationResolve;
-    rfidConfirmationResolve = null;
+function resolveConfirmation(accepted) {
+    closeModal('confirm-modal');
+    if (!confirmResolve) return;
+    const resolve = confirmResolve;
+    confirmResolve = null;
     resolve(accepted);
 }
 
-function requestRfidConfirmation(title, paragraphs) {
-    if (rfidConfirmationResolve) resolveRfidConfirmation(false);
-    document.getElementById('rfid-confirm-title').textContent = title;
-    const content = document.getElementById('rfid-confirm-content');
+function requestConfirmation(title, paragraphs) {
+    if (confirmResolve) resolveConfirmation(false);
+    document.getElementById('confirm-title').textContent = title;
+    const content = document.getElementById('confirm-content');
     content.innerHTML = '';
     for (const paragraph of paragraphs) {
         const element = document.createElement('p');
         element.textContent = paragraph;
         content.appendChild(element);
     }
-    openModal('rfid-confirm-modal');
-    return new Promise(resolve => { rfidConfirmationResolve = resolve; });
+    openModal('confirm-modal');
+    return new Promise(resolve => { confirmResolve = resolve; });
 }
 
 // SET_SPOOL_ID returns before the UID has moved: Moonraker dispatches the
@@ -1172,7 +1170,7 @@ async function assignSpoolToChannel(channel, spoolId, closePicker) {
             const paragraphs = [];
             if (other) paragraphs.push(`${formatUid(uid)} is linked to ${describeSpool(other)}. It will be removed there and linked to ${describeSpool(target)}.`);
             if (targetUids.length > 0) paragraphs.push(`${describeSpool(target)} already has ${targetUids.length} RFID tag(s): ${targetUids.map(formatUid).join(', ')}.`);
-            if (!await requestRfidConfirmation(other ? 'Move RFID' : 'Add Another RFID', paragraphs)) return;
+            if (!await requestConfirmation(other ? 'Move RFID' : 'Add Another RFID', paragraphs)) return;
             ensureChannelUid(channel, uid);
         }
 
@@ -1494,8 +1492,8 @@ function closeModal(id) {
 function initializeModals() {
     document.addEventListener('keydown', e => {
         if (e.key === 'Escape') {
-            if (document.getElementById('rfid-confirm-modal').style.display !== 'none') {
-                resolveRfidConfirmation(false);
+            if (document.getElementById('confirm-modal').style.display !== 'none') {
+                resolveConfirmation(false);
                 return;
             }
             closeModal('overwrite-modal'); closeModal('spoolman-modal');
@@ -1503,11 +1501,11 @@ function initializeModals() {
         }
     });
 
-    document.getElementById('rfid-confirm-close').addEventListener('click', () => resolveRfidConfirmation(false));
-    document.getElementById('rfid-confirm-cancel').addEventListener('click', () => resolveRfidConfirmation(false));
-    document.getElementById('rfid-confirm-accept').addEventListener('click', () => resolveRfidConfirmation(true));
-    document.getElementById('rfid-confirm-modal').addEventListener('click', e => {
-        if (e.target.id === 'rfid-confirm-modal') resolveRfidConfirmation(false);
+    document.getElementById('confirm-close').addEventListener('click', () => resolveConfirmation(false));
+    document.getElementById('confirm-cancel').addEventListener('click', () => resolveConfirmation(false));
+    document.getElementById('confirm-accept').addEventListener('click', () => resolveConfirmation(true));
+    document.getElementById('confirm-modal').addEventListener('click', e => {
+        if (e.target.id === 'confirm-modal') resolveConfirmation(false);
     });
 
     document.getElementById('create-spool-close').addEventListener('click', () => closeModal('create-spool-modal'));
