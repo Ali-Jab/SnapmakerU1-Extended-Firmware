@@ -508,8 +508,7 @@ function createChannelCard(channel) {
                 }
                 if (spool.remaining_weight != null) rows.push({ label: 'Remaining', value: `${Math.round(spool.remaining_weight)} g` });
                 if (spool.filament.weight  != null) rows.push({ label: 'Total',     value: `${spool.filament.weight} g` });
-                const uidsHtml = describeStoredUids(spool, uid);
-                if (uidsHtml) rows.push({ label: 'RFID tags', html: uidsHtml });
+                rows.push({ label: 'RFID tags', html: describeStoredUids(spool, uid) });
                 showPopover(b, rows);
             });
             b.addEventListener('mouseleave', hidePopover);
@@ -612,8 +611,6 @@ function createChannelCard(channel) {
             addRow('Remaining', filament.remaining_weight != null
                 ? `<span class="spool-remaining">${filament.remaining_weight} g</span>`
                 : na);
-            const activeSpool = spoolId != null ? spoolmanSpools.get(Number(spoolId)) : null;
-            addRow('RFID tags', describeStoredUids(activeSpool, uid) || na);
         }
 
         if (isMalformed) {
@@ -784,7 +781,10 @@ function defaultFilamentName(metadata) {
 
 function canCreateSpool(channel) {
     const metadata = channel?.rfid_data || {};
+    // A channel that already has a spool needs `Spool` to change it, not a
+    // second spool for the same filament.
     return !!(
+        channel?.spool_id == null &&
         normalizeUid(channel?.uid) &&
         cleanText(metadata.vendor) &&
         cleanText(metadata.type) &&
@@ -1088,22 +1088,30 @@ function renderSpoolList(filter) {
         return;
     }
 
-    const suggested = filtered.filter(s => spoolPickerSuggestedIds.has(Number(s.id)));
-    const rest = filtered.filter(s => !spoolPickerSuggestedIds.has(Number(s.id)));
+    const currentId = Number(spoolPickerCurrentId);
+    const current = [], suggested = [], rest = [];
+    for (const spool of filtered) {
+        if (Number(spool.id) === currentId) current.push(spool);
+        else if (spoolPickerSuggestedIds.has(Number(spool.id))) suggested.push(spool);
+        else rest.push(spool);
+    }
 
     list.innerHTML = '';
-    const addGroup = (label, spools) => {
-        if (spools.length === 0) return;
-        if (label) {
+    const groups = [
+        ['Assigned to this extruder', current],
+        ['Matches this tag', suggested],
+        ['All spools', rest],
+    ].filter(([, spools]) => spools.length > 0);
+    for (const [label, spools] of groups) {
+        // A single group is the whole list, so it needs no heading.
+        if (groups.length > 1) {
             const heading = document.createElement('div');
             heading.className = 'spoolman-group';
             heading.textContent = label;
             list.appendChild(heading);
         }
         spools.forEach(spool => list.appendChild(spoolPickerItem(spool)));
-    };
-    addGroup(suggested.length ? 'Matches this tag' : '', suggested);
-    addGroup(suggested.length ? 'All spools' : '', rest);
+    }
 }
 
 async function pickSpool(spoolId) {
@@ -1217,7 +1225,8 @@ function createSpoolUseExisting() {
 async function openCreateSpoolModal(channelNumber) {
     const channel = channelsData.find(item => item.channel === channelNumber);
     if (!channel || !canCreateSpool(channel)) {
-        showStatus('A readable RFID with vendor, material, and colour is required', 'error');
+        showStatus('Creating needs an unassigned channel and a readable RFID with ' +
+            'vendor, material, and colour', 'error');
         return;
     }
 
